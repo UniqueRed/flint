@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>flint — Your notch, alive.</title>
+<meta name="description" content="flint brings your Mac's notch to life. Music controls, clipboard history, system stats, focus timer — free forever.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://yoursite.com">
+<meta property="og:title" content="flint — Your notch, alive.">
+<meta property="og:description" content="Music. Clipboard. System stats. Focus timer. All living seamlessly inside your Mac's notch. Free forever.">
+<meta property="og:image" content="https://yoursite.com/og-image.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="flint — Your notch, alive.">
+<meta name="twitter:description" content="Music. Clipboard. System stats. Focus timer. All living seamlessly inside your Mac's notch. Free forever.">
+<meta name="twitter:image" content="https://yoursite.com/og-image.png">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black: #000;
+    --white: #fff;
+    --gray: #86868b;
+    --gray-mid: #424245;
+    --blue: #2997ff;
+    --font: -apple-system, "Helvetica Neue", sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--font);
+    background: var(--black);
+    color: var(--white);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 200;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    backdrop-filter: saturate(180%) blur(24px);
+    -webkit-backdrop-filter: saturate(180%) blur(24px);
+    background: rgba(0,0,0,0.8);
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
+  }
+
+  .nav-logo {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.5px;
+    color: var(--white);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 32px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    font-size: 12px;
+    color: rgba(255,255,255,0.75);
+    text-decoration: none;
+    transition: color 0.15s;
+    white-space: nowrap;
+  }
+  .nav-links a:hover { color: var(--white); }
+
+  .nav-cta {
+    font-size: 12px;
+    color: var(--blue);
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .nav-cta:hover { opacity: 0.75; }
+
+  /* HERO */
+  .hero {
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 44px 24px 80px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-notch-bar {
+    position: absolute;
+    top: 44px;
+    left: 0; right: 0;
+    height: 0.5px;
+    background: rgba(255,255,255,0.06);
+  }
+
+  .hero-notch {
+    position: absolute;
+    top: 44px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 130px;
+    height: 38px;
+    background: #000;
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-top: none;
+    border-radius: 0 0 22px 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    overflow: hidden;
+    transition: width 0.55s cubic-bezier(0.34,1.2,0.64,1), height 0.55s cubic-bezier(0.34,1.2,0.64,1), border-radius 0.55s cubic-bezier(0.34,1.2,0.64,1);
+    z-index: 10;
+  }
+
+  .hero-notch.open { width: 340px; height: 190px; border-radius: 0 0 28px 28px; }
+
+  .n-collapsed {
+    display: flex; align-items: center; gap: 7px;
+    position: absolute; transition: opacity 0.15s;
+  }
+  .hero-notch.open .n-collapsed { opacity: 0; pointer-events: none; }
+
+  .n-expanded {
+    position: absolute; inset: 0; padding: 18px 18px 14px;
+    opacity: 0; transition: opacity 0.2s 0.25s;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .hero-notch.open .n-expanded { opacity: 1; }
+
+  .bars { display: flex; align-items: flex-end; gap: 2px; height: 13px; }
+  .bars i { width: 2.5px; background: #fff; border-radius: 1px; display: block; animation: b 0.7s ease-in-out infinite alternate; }
+  .bars i:nth-child(1) { height: 35%; animation-delay: 0s; }
+  .bars i:nth-child(2) { height: 100%; animation-delay: 0.18s; }
+  .bars i:nth-child(3) { height: 55%; animation-delay: 0.07s; }
+  .bars i:nth-child(4) { height: 80%; animation-delay: 0.28s; }
+  @keyframes b { from { transform: scaleY(0.3); } to { transform: scaleY(1); } }
+
+  .n-label { font-size: 12px; font-weight: 500; color: #fff; white-space: nowrap; }
+  .n-dot { width: 5px; height: 5px; background: #30d158; border-radius: 50%; }
+
+  .n-row { display: flex; align-items: center; gap: 12px; }
+  .n-art {
+    width: 52px; height: 52px; border-radius: 9px;
+    background: linear-gradient(135deg, #1c1c1e, #3a3a3c);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 22px;
+  }
+  .n-info { flex: 1; text-align: left; }
+  .n-track { font-size: 14px; font-weight: 600; color: #fff; line-height: 1.2; }
+  .n-artist { font-size: 11px; color: rgba(255,255,255,0.45); margin-top: 3px; }
+  .n-progress { height: 3px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; }
+  .n-fill { height: 100%; width: 38%; background: rgba(255,255,255,0.6); border-radius: 2px; }
+  .n-controls { display: flex; align-items: center; justify-content: center; gap: 32px; }
+  .n-controls button {
+    background: none; border: none; color: rgba(255,255,255,0.7);
+    font-size: 17px; cursor: pointer; padding: 0; line-height: 1; transition: color 0.1s;
+  }
+  .n-controls button:hover { color: #fff; }
+  .n-controls .n-play { font-size: 24px; color: #fff; }
+
+  .hero-content { margin-top: 56px; }
+
+  .hero-eyebrow {
+    font-size: 17px; font-weight: 400; color: var(--blue); margin-bottom: 14px;
+    opacity: 0; animation: up 0.9s 0.1s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  h1 {
+    font-size: clamp(52px, 9vw, 96px);
+    font-weight: 700; letter-spacing: -0.03em; line-height: 1.02;
+    color: var(--white); margin-bottom: 22px;
+    opacity: 0; animation: up 0.9s 0.22s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  .hero-sub {
+    font-size: clamp(17px, 2.2vw, 21px); font-weight: 400; color: var(--gray);
+    max-width: 520px; line-height: 1.55; margin: 0 auto 40px;
+    opacity: 0; animation: up 0.9s 0.34s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  .hero-btns {
+    display: flex; align-items: center; justify-content: center; gap: 24px; flex-wrap: wrap;
+    opacity: 0; animation: up 0.9s 0.46s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  .btn-dl {
+    font-size: 17px; font-weight: 400; color: var(--white);
+    background: var(--blue); padding: 12px 26px; border-radius: 980px;
+    text-decoration: none; transition: filter 0.2s;
+  }
+  .btn-dl:hover { filter: brightness(1.1); }
+
+  .btn-ghost {
+    font-size: 17px; font-weight: 400; color: var(--blue); text-decoration: none;
+    display: flex; align-items: center; gap: 4px; transition: opacity 0.2s;
+  }
+  .btn-ghost:hover { opacity: 0.7; }
+  .btn-ghost::after { content: "›"; font-size: 21px; line-height: 1; }
+
+  .hero-note {
+    margin-top: 24px; font-size: 13px; color: var(--gray-mid);
+    opacity: 0; animation: up 0.9s 0.58s cubic-bezier(0.16,1,0.3,1) forwards;
+  }
+
+  @keyframes up {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* SCREENSHOT */
+  .screen-section { padding: 96px 24px; text-align: center; }
+
+  .section-label { font-size: 17px; font-weight: 600; color: var(--blue); margin-bottom: 8px; }
+
+  .section-title {
+    font-size: clamp(32px, 5vw, 56px); font-weight: 700;
+    letter-spacing: -0.025em; line-height: 1.06; color: var(--white); margin-bottom: 14px;
+  }
+
+  .section-sub {
+    font-size: 19px; color: var(--gray); max-width: 480px; margin: 0 auto 56px; line-height: 1.5;
+  }
+
+  .screen-frame {
+    max-width: 960px; margin: 0 auto; border-radius: 14px; overflow: hidden;
+    border: 0.5px solid rgba(255,255,255,0.1); background: #0a0a0a;
+    aspect-ratio: 16/10; display: flex; align-items: center; justify-content: center;
+  }
+
+  .screen-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 14px;
+    color: rgba(255,255,255,0.15); font-size: 13px; letter-spacing: 0.02em;
+  }
+  .screen-placeholder svg { opacity: 0.12; }
+
+  /* FEATURES */
+  .features-section { padding: 0; }
+
+  .features-intro { text-align: center; padding: 96px 24px 80px; }
+
+  .feat {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: 100%;
+    min-height: 480px;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .feat:last-of-type { border-bottom: 0.5px solid rgba(255,255,255,0.06); }
+
+  .feat-text {
+    padding: 80px 64px;
+    display: flex; flex-direction: column; justify-content: center; gap: 16px;
+  }
+
+  /* Even rows: visual on LEFT, text on RIGHT */
+  .feat:nth-child(even) .feat-text { order: 2; }
+  .feat:nth-child(even) .feat-visual { order: 1; }
+
+  .feat-tag {
+    font-size: 13px; font-weight: 500; color: var(--blue);
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  .feat-title {
+    font-size: clamp(28px, 3.5vw, 42px); font-weight: 700;
+    letter-spacing: -0.022em; line-height: 1.1; color: var(--white);
+  }
+
+  .feat-desc {
+    font-size: 17px; color: var(--gray); line-height: 1.6; max-width: 380px;
+  }
+
+  .feat-visual {
+    background: #0a0a0a;
+    display: flex; align-items: center; justify-content: center;
+    position: relative; overflow: hidden; min-height: 360px;
+    border-left: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .feat:nth-child(even) .feat-visual {
+    border-left: none;
+    border-right: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .feat-img-placeholder {
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    color: rgba(255,255,255,0.1); font-size: 12px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  .feat-more {
+    max-width: 1080px; margin: 0 auto;
+    padding: 80px 24px; text-align: center;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .feat-more-title {
+    font-size: clamp(28px, 3.5vw, 42px); font-weight: 700;
+    letter-spacing: -0.022em; color: rgba(255,255,255,0.2); margin-bottom: 10px;
+  }
+
+  .feat-more-sub { font-size: 17px; color: var(--gray-mid); }
+
+  /* FREE */
+  .free-section {
+    padding: 120px 24px; text-align: center;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    position: relative; overflow: hidden;
+  }
+
+  .free-section::before {
+    content: '';
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 800px; height: 400px;
+    background: radial-gradient(ellipse at 50% 0%, rgba(41,151,255,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .free-title {
+    font-size: clamp(52px, 10vw, 112px); font-weight: 700;
+    letter-spacing: -0.04em; line-height: 0.95; color: var(--white); margin-bottom: 24px;
+  }
+  .free-title em { font-style: normal; color: var(--blue); }
+
+  .free-sub {
+    font-size: clamp(17px, 2vw, 21px); color: var(--gray);
+    max-width: 480px; margin: 0 auto 48px; line-height: 1.5;
+  }
+
+  .free-pills {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-bottom: 52px;
+  }
+
+  .free-pill {
+    font-size: 13px; color: rgba(255,255,255,0.45);
+    border: 0.5px solid rgba(255,255,255,0.12);
+    border-radius: 980px; padding: 6px 16px;
+  }
+
+  /* DOWNLOAD */
+  .dl-section {
+    padding: 100px 24px 120px; text-align: center;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    background: #050505;
+  }
+
+  .dl-title {
+    font-size: clamp(36px, 6vw, 64px); font-weight: 700;
+    letter-spacing: -0.025em; color: var(--white); margin-bottom: 12px;
+  }
+
+  .dl-sub { font-size: 19px; color: var(--gray); margin-bottom: 40px; }
+
+  .dl-req { margin-top: 20px; font-size: 12px; color: var(--gray-mid); line-height: 2.2; }
+
+  /* FOOTER */
+  footer {
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    padding: 20px 24px; text-align: center;
+    font-size: 12px; color: var(--gray-mid); background: #000;
+  }
+  footer a { color: var(--gray); text-decoration: none; transition: color 0.15s; }
+  footer a:hover { color: var(--white); }
+  footer span { margin: 0 8px; opacity: 0.3; }
+
+  /* SCROLL REVEAL */
+  .reveal {
+    opacity: 0; transform: translateY(20px);
+    transition: opacity 0.8s cubic-bezier(0.16,1,0.3,1), transform 0.8s cubic-bezier(0.16,1,0.3,1);
+  }
+  .reveal.in { opacity: 1; transform: none; }
+
+  /* HOW IT WORKS */
+  .how-section {
+    padding: 96px 24px;
+    text-align: center;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .how-steps {
+    display: flex;
+    gap: 0;
+    max-width: 860px;
+    margin: 64px auto 0;
+    position: relative;
+  }
+
+  .how-steps::before {
+    content: '';
+    position: absolute;
+    top: 28px;
+    left: calc(16.66% + 20px);
+    right: calc(16.66% + 20px);
+    height: 0.5px;
+    background: rgba(255,255,255,0.1);
+  }
+
+  .how-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    padding: 0 24px;
+  }
+
+  .how-num {
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    border: 0.5px solid rgba(255,255,255,0.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 19px;
+    font-weight: 600;
+    color: var(--white);
+    background: #111;
+    position: relative;
+    z-index: 1;
+  }
+
+  .how-step-title {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .how-step-desc {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.55;
+    max-width: 200px;
+    margin: 0 auto;
+  }
+
+  /* SYSTEM REQ */
+  .req-section {
+    padding: 0 24px 96px;
+    text-align: center;
+  }
+
+  .req-box {
+    max-width: 560px;
+    margin: 0 auto;
+    border: 0.5px solid rgba(255,255,255,0.1);
+    border-radius: 16px;
+    padding: 36px 40px;
+    background: #0a0a0a;
+  }
+
+  .req-title {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 24px;
+  }
+
+  .req-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .req-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 15px;
+    padding-bottom: 12px;
+    border-bottom: 0.5px solid rgba(255,255,255,0.06);
+  }
+
+  .req-row:last-child { border-bottom: none; padding-bottom: 0; }
+
+  .req-key { color: var(--gray); }
+  .req-val { color: var(--white); font-weight: 500; }
+
+  .req-note {
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--gray-mid);
+    line-height: 1.6;
+  }
+
+  .req-note strong { color: var(--gray); font-weight: 500; }
+
+  /* CHANGELOG */
+  .changelog-section {
+    padding: 96px 24px;
+    border-top: 0.5px solid rgba(255,255,255,0.06);
+    max-width: 640px;
+    margin: 0 auto;
+  }
+
+  .changelog-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 40px;
+  }
+
+  .changelog-title {
+    font-size: clamp(28px, 4vw, 42px);
+    font-weight: 700;
+    letter-spacing: -0.022em;
+    color: var(--white);
+  }
+
+  .changelog-github {
+    font-size: 13px;
+    color: var(--blue);
+    text-decoration: none;
+    transition: opacity 0.15s;
+  }
+  .changelog-github:hover { opacity: 0.7; }
+
+  .changelog-entry { margin-bottom: 40px; }
+
+  .changelog-version {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .changelog-v {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--white);
+  }
+
+  .changelog-date {
+    font-size: 13px;
+    color: var(--gray-mid);
+  }
+
+  .changelog-badge {
+    font-size: 11px;
+    font-weight: 500;
+    color: #30d158;
+    background: rgba(48,209,88,0.1);
+    border: 0.5px solid rgba(48,209,88,0.2);
+    padding: 2px 8px;
+    border-radius: 980px;
+  }
+
+  .changelog-items {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .changelog-items li {
+    font-size: 15px;
+    color: var(--gray);
+    line-height: 1.5;
+    padding-left: 16px;
+    position: relative;
+  }
+
+  .changelog-items li::before {
+    content: '—';
+    position: absolute;
+    left: 0;
+    color: var(--gray-mid);
+  }
+
+  /* ─── RESPONSIVE — all breakpoints in one place ─── */
+
+  @media (max-width: 860px) {
+    .how-steps { flex-direction: column; gap: 40px; }
+    .how-steps::before { display: none; }
+    .changelog-section { padding: 64px 24px; }
+  }
+
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hero-notch { display: none; }
+
+    .feat {
+      grid-template-columns: 1fr;
+      min-height: auto;
+    }
+    /* Reset order so text always comes first on mobile */
+    .feat .feat-text,
+    .feat:nth-child(even) .feat-text { order: 0; }
+    .feat .feat-visual,
+    .feat:nth-child(even) .feat-visual { order: 1; }
+
+    .feat-text { padding: 52px 32px 36px; }
+    .feat-desc { max-width: 100%; }
+
+    .feat-visual {
+      min-height: 260px;
+      border-left: none !important;
+      border-right: none !important;
+      border-top: 0.5px solid rgba(255,255,255,0.06);
+    }
+  }
+
+  @media (max-width: 480px) {
+    .hero-btns { flex-direction: column; gap: 16px; }
+    .feat-text { padding: 44px 24px 28px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">flint</a>
+  <ul class="nav-links">
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#changelog">What's new</a></li>
+    <li><a href="#download">Download</a></li>
+  </ul>
+  <a href="#download" class="nav-cta">Download Free ›</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-notch-bar"></div>
+
+  <div class="hero-notch" id="heroNotch">
+    <div class="n-collapsed">
+      <div class="bars"><i></i><i></i><i></i><i></i></div>
+      <span class="n-label">Now Playing</span>
+      <div class="n-dot"></div>
+    </div>
+    <div class="n-expanded">
+      <div class="n-row">
+        <div class="n-art">♪</div>
+        <div class="n-info">
+          <div class="n-track">West End Blues</div>
+          <div class="n-artist">Louis Armstrong</div>
+        </div>
+      </div>
+      <div class="n-progress"><div class="n-fill"></div></div>
+      <div class="n-controls">
+        <button>⏮</button>
+        <button class="n-play">⏸</button>
+        <button>⏭</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">Introducing flint</p>
+    <h1>Your notch,<br>alive.</h1>
+    <p class="hero-sub">Music. Clipboard. System stats. Focus timer. All living seamlessly inside your Mac's notch — always a tap away, never in the way.</p>
+    <div class="hero-btns">
+      <a href="#download" class="btn-dl">Download Free</a>
+      <a href="#features" class="btn-ghost">See what's inside</a>
+    </div>
+    <p class="hero-note">Free forever &nbsp;·&nbsp; macOS 13+ &nbsp;·&nbsp; No account needed</p>
+  </div>
+</section>
+
+<!-- MAIN SCREENSHOT -->
+<section class="screen-section reveal">
+  <p class="section-label">flint</p>
+  <h2 class="section-title">Built into your notch.<br>Out of your way.</h2>
+  <p class="section-sub">Click to expand. Click away to collapse. It disappears when you don't need it.</p>
+
+  <div class="screen-frame">
+    <!--
+      ADD YOUR MAIN SCREENSHOT HERE:
+      <img src="screenshots/main.png" alt="flint on MacBook" style="width:100%;height:100%;object-fit:cover;">
+    -->
+    <div class="screen-placeholder">
+      <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+        <rect x="4" y="8" width="32" height="24" rx="2" stroke="white" stroke-width="1.2"/>
+        <rect x="16" y="3" width="8" height="7" rx="3.5" fill="white"/>
+      </svg>
+      Add screenshot here
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section class="how-section reveal" id="how">
+  <p class="section-label">Setup</p>
+  <h2 class="section-title">Up and running<br>in seconds.</h2>
+
+  <div class="how-steps">
+    <div class="how-step">
+      <div class="how-num">1</div>
+      <p class="how-step-title">Download</p>
+      <p class="how-step-desc">Grab the free download. No installer, no account, no setup wizard.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">2</div>
+      <p class="how-step-title">Open</p>
+      <p class="how-step-desc">Open flint.app and grant the one permission it asks for — clipboard access.</p>
+    </div>
+    <div class="how-step">
+      <div class="how-num">3</div>
+      <p class="how-step-title">Click your notch</p>
+      <p class="how-step-desc">That's it. Tap the notch to expand, tap anywhere else to collapse.</p>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features-section" id="features">
+
+  <div class="features-intro reveal">
+    <p class="section-label">Features</p>
+    <h2 class="section-title">Everything you need.<br>Nothing you don't.</h2>
+  </div>
+
+  <!-- FEATURE 1: text left, visual right -->
+  <div class="feat reveal">
+    <div class="feat-text">
+      <p class="feat-tag">Now Playing</p>
+      <h3 class="feat-title">Music controls,<br>always within reach.</h3>
+      <p class="feat-desc">See the current track and artist, control playback, and follow your progress — without ever leaving what you're doing. Works with Music, Spotify, and any player on your Mac.</p>
+    </div>
+    <div class="feat-visual">
+      <!--
+        ADD FEATURE SCREENSHOT:
+        <img src="screenshots/music.png" alt="Music" style="width:100%;height:100%;object-fit:cover;">
+      -->
+      <div class="feat-img-placeholder">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="14" stroke="white" stroke-width="1"/><path d="M13 10.5v11l9-5.5-9-5.5z" stroke="white" stroke-width="1" stroke-linejoin="round"/></svg>
+        Screenshot
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURE 2: visual left, text right -->
+  <div class="feat reveal">
+    <div class="feat-text">
+      <p class="feat-tag">Clipboard</p>
+      <h3 class="feat-title">Ten copies.<br>One tap back.</h3>
+      <p class="feat-desc">flint remembers your last 10 copied items — text, links, emails — and lets you re-paste any of them instantly. Your clipboard, finally with a memory.</p>
+    </div>
+    <div class="feat-visual">
+      <!--
+        ADD FEATURE SCREENSHOT:
+        <img src="screenshots/clipboard.png" alt="Clipboard" style="width:100%;height:100%;object-fit:cover;">
+      -->
+      <div class="feat-img-placeholder">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><rect x="9" y="5" width="18" height="22" rx="2" stroke="white" stroke-width="1"/><rect x="5" y="9" width="18" height="22" rx="2" stroke="white" stroke-width="1"/><line x1="9" y1="15" x2="19" y2="15" stroke="white" stroke-width="1"/><line x1="9" y1="19" x2="16" y2="19" stroke="white" stroke-width="1"/></svg>
+        Screenshot
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURE 3: text left, visual right -->
+  <div class="feat reveal">
+    <div class="feat-text">
+      <p class="feat-tag">System</p>
+      <h3 class="feat-title">Know when your<br>Mac is working hard.</h3>
+      <p class="feat-desc">Live CPU, RAM, and network speed shown as clean circular gauges. You'll always know what's happening under the hood — no need to open Activity Monitor.</p>
+    </div>
+    <div class="feat-visual">
+      <!--
+        ADD FEATURE SCREENSHOT:
+        <img src="screenshots/stats.png" alt="System stats" style="width:100%;height:100%;object-fit:cover;">
+      -->
+      <div class="feat-img-placeholder">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="16" r="11" stroke="white" stroke-width="1"/><path d="M16 5 A11 11 0 0 1 27 16" stroke="white" stroke-width="2" stroke-linecap="round"/></svg>
+        Screenshot
+      </div>
+    </div>
+  </div>
+
+  <!-- FEATURE 4: visual left, text right -->
+  <div class="feat reveal">
+    <div class="feat-text">
+      <p class="feat-tag">Focus</p>
+      <h3 class="feat-title">Stay in the zone.<br>Right from the notch.</h3>
+      <p class="feat-desc">Pomodoro-style focus sessions with a live countdown in the notch. Choose a preset or set your own. A quiet notification lets you know when it's time to rest.</p>
+    </div>
+    <div class="feat-visual">
+      <!--
+        ADD FEATURE SCREENSHOT:
+        <img src="screenshots/timer.png" alt="Focus timer" style="width:100%;height:100%;object-fit:cover;">
+      -->
+      <div class="feat-img-placeholder">
+        <svg width="32" height="32" viewBox="0 0 32 32" fill="none"><circle cx="16" cy="18" r="11" stroke="white" stroke-width="1"/><line x1="16" y1="18" x2="16" y2="11" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="16" y1="18" x2="21" y2="18" stroke="white" stroke-width="1.5" stroke-linecap="round"/><line x1="13" y1="4" x2="19" y2="4" stroke="white" stroke-width="1.5" stroke-linecap="round"/></svg>
+        Screenshot
+      </div>
+    </div>
+  </div>
+
+  <!-- MORE COMING SOON -->
+  <div class="feat-more reveal">
+    <p class="feat-more-title">And more on the way.</p>
+    <p class="feat-more-sub">flint is just getting started.</p>
+  </div>
+
+</section>
+
+<!-- FREE -->
+<section class="free-section reveal">
+  <h2 class="free-title">Free.<br><em>Forever.</em></h2>
+  <p class="free-sub">No subscription. No free trial. No "Pro" tier. Download it once and it's yours — completely, permanently free.</p>
+  <div class="free-pills">
+    <span class="free-pill">No account required</span>
+    <span class="free-pill">No in-app purchases</span>
+    <span class="free-pill">No ads</span>
+    <span class="free-pill">No data collected</span>
+    <span class="free-pill">No paywalls</span>
+  </div>
+  <a href="#download" class="btn-dl" style="font-size:19px;padding:14px 32px;">Get flint free</a>
+</section>
+
+<!-- SYSTEM REQUIREMENTS -->
+<section class="req-section reveal">
+  <div class="req-box">
+    <p class="req-title">System Requirements</p>
+    <div class="req-list">
+      <div class="req-row">
+        <span class="req-key">macOS</span>
+        <span class="req-val">Ventura 13.0 or later</span>
+      </div>
+      <div class="req-row">
+        <span class="req-key">Chip</span>
+        <span class="req-val">Apple Silicon &amp; Intel</span>
+      </div>
+      <div class="req-row">
+        <span class="req-key">Display</span>
+        <span class="req-val">Notch recommended</span>
+      </div>
+      <div class="req-row">
+        <span class="req-key">Storage</span>
+        <span class="req-val">&lt; 5 MB</span>
+      </div>
+      <div class="req-row">
+        <span class="req-key">Price</span>
+        <span class="req-val">Free</span>
+      </div>
+    </div>
+    <p class="req-note"><strong>No notch?</strong> flint still works on any Mac — it sits as a floating pill just below the menu bar on non-notch displays.</p>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section class="dl-section reveal" id="download">
+  <h2 class="dl-title">Download flint.</h2>
+  <p class="dl-sub">Free. For Mac. No strings attached.</p>
+  <a href="flint.zip" class="btn-dl" style="font-size:19px;padding:14px 32px;display:inline-flex;align-items:center;gap:8px;">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 1v10M4 7l4 4 4-4M1 13h14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Download for Mac
+  </a>
+  <div class="dl-req">
+    macOS 13 Ventura or later &nbsp;·&nbsp; Apple Silicon &amp; Intel &nbsp;·&nbsp; Notch display recommended
+  </div>
+</section>
+
+<!-- CHANGELOG -->
+<section class="changelog-section reveal" id="changelog">
+  <div class="changelog-header">
+    <h2 class="changelog-title">What's new.</h2>
+    <a href="https://github.com/yourusername/flint/releases" class="changelog-github">View on GitHub ›</a>
+  </div>
+
+  <div class="changelog-entry">
+    <div class="changelog-version">
+      <span class="changelog-v">Version 1.0</span>
+      <span class="changelog-date">April 2026</span>
+      <span class="changelog-badge">Latest</span>
+    </div>
+    <ul class="changelog-items">
+      <li>Initial release</li>
+      <li>Now Playing — music controls via MediaRemote</li>
+      <li>Clipboard history — remembers your last 10 copies</li>
+      <li>System stats — live CPU, RAM, and network gauges</li>
+      <li>Focus timer — Pomodoro sessions with custom labels</li>
+      <li>Seamless notch integration on all notch-equipped Macs</li>
+    </ul>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <p>
+    flint for Mac
+    <span>·</span>
+    <a href="https://github.com/yourusername/flint">GitHub</a>
+    <span>·</span>
+    <a href="mailto:you@youremail.com">Contact</a>
+  </p>
+</footer>
+
+<script>
+  // Notch demo
+  const notch = document.getElementById('heroNotch');
+  notch.addEventListener('click', () => notch.classList.toggle('open'));
+
+  // Smooth scroll — offset for fixed 44px nav
+  document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+      const id = a.getAttribute('href');
+      if (id === '#') return;
+      const target = document.querySelector(id);
+      if (!target) return;
+      e.preventDefault();
+      const top = target.getBoundingClientRect().top + window.scrollY - 56;
+      window.scrollTo({ top, behavior: 'smooth' });
+    });
+  });
+
+  // Scroll reveal
+  const els = document.querySelectorAll('.reveal');
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e, i) => {
+      if (e.isIntersecting) {
+        setTimeout(() => e.target.classList.add('in'), i * 80);
+        io.unobserve(e.target);
+      }
+    });
+  }, { threshold: 0.08 });
+  els.forEach(el => io.observe(el));
+</script>
+
+</body>
+</html>
