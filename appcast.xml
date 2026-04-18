@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
     <channel>
-        <title>Flint</title>
+        <title>flint</title>
         <link>https://raw.githubusercontent.com/UniqueRed/flint/main/appcast.xml</link>
         <item>
-            <title>Version 1.0.0</title>
+            <title>Version 1.2.0</title>
             <pubDate>Fri, 18 Apr 2026 00:00:00 +0000</pubDate>
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <enclosure
-                url="https://github.com/UniqueRed/flint/releases/download/v1.0.0/Flint.dmg"
-                sparkle:edSignature="FILL_IN_AFTER_SIGNING"
-                length="FILL_IN_FILE_SIZE"
+                url="https://github.com/UniqueRed/flint/releases/download/v1.2.0/flint.dmg"
+                sparkle:edSignature="nb5CYxXFDt1Fm39x89aJu7Dcz6jQfpwVjLYq2OvGfdtbSdteX5w3/LCayagJkeIyrHr+t//eV3dS2vIQKtzdAw=="
+                length="1556319"
                 type="application/octet-stream"
             />
         </item>
